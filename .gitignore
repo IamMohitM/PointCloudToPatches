@@ -1,0 +1,7 @@
+*.egg-info
+*.idea
+/src/models/checkpoints/
+*/*.dat
+*/ignore_dir/
+/ignore_dir/
+*.DS_STORE
