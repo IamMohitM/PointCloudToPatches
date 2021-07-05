@@ -13,6 +13,9 @@ class ReconstructionInterface(ModelInterface):
                  edge_data, vertex_t, adjacencies, junction_order,
                  template_normals, symmetries=None):
         self.model = model
+        if args.cuda:
+            cuda = torch.device("cuda")
+            self.model.cuda()
 
         self.vertex_idxs = vertex_idxs
         self.face_idxs = face_idxs
@@ -28,8 +31,9 @@ class ReconstructionInterface(ModelInterface):
         self.n_samples_per_loop_side = int(
             np.ceil(np.sqrt(args.n_samples / face_idxs.shape[0])))
 
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=args.learning_rate)
-
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=args.decay_rate)
+        self.step_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=args.decay_step,
+                                                              gamma=args.decay_rate)
         # These represent the order of control points on the curve
         self.edge_idxs = [[0, 1, 2, 3], [3, 4, 5, 6],
                           [6, 7, 8, 9], [9, 10, 11, 0]]
@@ -101,8 +105,6 @@ class ReconstructionInterface(ModelInterface):
             _loss) if args.cuda else _loss
 
         if args.cuda:
-            cuda = torch.device("cuda")
-            self.model.cuda()
             self._compute_losses.cuda()
 
     def forward(self, batch):
@@ -142,6 +144,7 @@ class ReconstructionInterface(ModelInterface):
         loss = losses_dict['loss']
         loss.mean().backward()
         self.optimizer.step()
+        self.step_scheduler.step()
 
         return {k: v.mean().item() for k, v in losses_dict.items()}
 
@@ -189,7 +192,8 @@ class ReconstructionInterface(ModelInterface):
                 'model_state_dict': self.model.state_dict(),
                 'optimizer_state_dict': self.optimizer.state_dict(),
                 'loss': final_loss['loss'],
-                'epoch': count//n
+                'epoch': count // n,
+                'step_scheduler': self.step_scheduler.state_dict()
             }, path)
             self.best_val_loss = final_loss['loss']
 

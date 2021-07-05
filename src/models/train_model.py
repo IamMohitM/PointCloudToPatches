@@ -32,11 +32,13 @@ def train(args):
         checkpoint = torch.load(os.path.join(args.checkpoint_dir, 'best_val_loss.pth'))
         model.load_state_dict(checkpoint['model_state_dict'])
         interface.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        interface.best_val_loss = checkpoint['loss']
+        interface.step_scheduler.load_state_dict(checkpoint['step_scheduler'])
         starting_epoch = checkpoint['epoch']
-        loss = checkpoint['loss']
-        interface.best_val_loss = loss
 
-        print(f'Loading checkpoint and starting training from epoch {starting_epoch}')
+        print(
+            f'Loading checkpoint and starting training from epoch {starting_epoch} and current learning rate \
+            {interface.step_scheduler.get_lr()}')
 
     check_pointer = ttools.Checkpointer(
         args.checkpoint_dir, model=model, optimizers=interface.optimizer)
@@ -78,10 +80,12 @@ if __name__ == "__main__":
     parser.add_argument('--epoch', default=200, type=int, help='number of epoch in training')
     parser.add_argument('--learning_rate', default=0.001, type=float, help='learning rate in training')
     parser.add_argument('--num_point', type=int, default=1024, help='Number of points')
-    parser.add_argument('--decay_rate', type=float, default=1e-4, help='decay rate')
+    parser.add_argument('--decay_rate', type=float, default=0.5, help='decay rate')
+    parser.add_argument('--decay_step', type=float, default=20, help='decay step')
     parser.add_argument('--use_normals', action='store_true', default=True, help='use normals')
     parser.add_argument('--process_data', action='store_true', default=True, help='save data offline')
-    parser.add_argument('--no_process_data', action='store_false', default=True, dest='process_data', help='save data offline')
+    parser.add_argument('--no_process_data', action='store_false', default=True, dest='process_data',
+                        help='save data offline')
     parser.add_argument('--use_uniform_sample', action='store_true', default=True, help='use uniform sampling')
     parser.add_argument('--template_dir', help="Path to Sphere templates")
 
