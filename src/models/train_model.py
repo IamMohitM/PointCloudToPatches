@@ -11,8 +11,7 @@ from src.models.interfaces import ReconstructionInterface
 
 
 def train(args):
-    train_dataset, test_dataset = utils.load_modelnet(args)
-
+    train_dataset, val_dataset = utils.load_modelnet(args)
     template_parameters = utils.load_template_parameters(args)
     model = ReconstructionModel(len(template_parameters['initial_parameters']),
                                 init=template_parameters['initial_parameters'])
@@ -62,7 +61,7 @@ def train(args):
     starting_epoch = extras['epoch'] if extras is not None else None
 
     trainer.train(train_dataset, num_epochs=args.epoch,
-                  val_dataloader=test_dataset, starting_epoch=starting_epoch)
+                  val_dataloader=val_dataset, starting_epoch=starting_epoch)
 
 
 if __name__ == "__main__":

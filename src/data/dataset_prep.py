@@ -68,13 +68,15 @@ class ModelNetDataLoader(Dataset):
 
         shape_ids = {}
         if self.num_category == 10:
-            shape_ids['train'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet10_train.txt'))]
-            shape_ids['test'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet10_test.txt'))]
+            shape_ids['train'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet10_train_new.txt'))]
+            shape_ids['test'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet10_test_new.txt'))]
+            shape_ids['val'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet10_test_new.txt'))]
         else:
             shape_ids['train'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet40_train.txt'))]
             shape_ids['test'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet40_test.txt'))]
+            raise AssertionError("No!")
 
-        assert (split == 'train' or split == 'test')
+        assert (split in ['train', 'test', 'val'])
         shape_names = ['_'.join(x.split('_')[0:-1]) for x in shape_ids[split]]
         self.data_path = [(shape_names[i], os.path.join(self.root, shape_names[i], shape_ids[split][i]) + '.txt') for i
                           in range(len(shape_ids[split]))]
