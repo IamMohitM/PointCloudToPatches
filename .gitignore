@@ -4,4 +4,5 @@
 *.dat
 */ignore_dir/
 /ignore_dir/
+*/__pycache__/
 *.DS_STORE

@@ -2,12 +2,13 @@ import argparse
 import datetime
 import os
 
+import torch
 import ttools
 from torch.utils.tensorboard import SummaryWriter
 
-from src.scripts import utils
 from src.models.PointnetModel import ReconstructionModel
 from src.models.interfaces import ReconstructionInterface
+from src.scripts import utils
 
 
 def train(args):
@@ -25,40 +26,43 @@ def train(args):
                                         template_parameters["template_normals"],
                                         template_parameters["symmetries"])
 
+    starting_epoch = None
+
+    if os.path.exists(os.path.join(args.checkpoint_dir, 'best_val_loss.pth')):
+        checkpoint = torch.load(os.path.join(args.checkpoint_dir, 'best_val_loss.pth'))
+        model.load_state_dict(checkpoint['model_state_dict'])
+        interface.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        starting_epoch = checkpoint['epoch']
+        loss = checkpoint['loss']
+        interface.best_val_loss = loss
+
+        print(f'Loading checkpoint and starting training from epoch {starting_epoch}')
+
     check_pointer = ttools.Checkpointer(
         args.checkpoint_dir, model=model, optimizers=interface.optimizer)
-    extras, meta = check_pointer.load_latest()
+
+    # extras, _ = check_pointer.load_latest()
 
     keys = ['loss', 'chamfer_loss', 'normals_loss', 'collision_loss',
             'planar_loss', 'template_normals_loss', 'symmetry_loss']
 
-    # writer = SummaryWriter(
-    #     os.path.join(args.checkpoint_dir, 'summaries',
-    #                  datetime.datetime.now().strftime('train-%m%d%y-%H%M%S')),
-    #     flush_secs=1)
-    # val_writer = SummaryWriter(
-    #     os.path.join(args.checkpoint_dir, 'summaries',
-    #                  datetime.datetime.now().strftime('val-%m%d%y-%H%M%S')),
-    #     flush_secs=1)
     writer = SummaryWriter(
         os.path.join(args.checkpoint_dir, 'summaries',
-                     datetime.datetime.now().strftime('train-test')),
+                     datetime.datetime.now().strftime('training_log_%m%d%y_%H%M%S')),
         flush_secs=1)
     val_writer = SummaryWriter(
         os.path.join(args.checkpoint_dir, 'summaries',
-                     datetime.datetime.now().strftime('val-test')),
+                     datetime.datetime.now().strftime('validation_log_%m%d%y_%H%M%S')),
         flush_secs=1)
 
     trainer = ttools.Trainer(interface)
     trainer.add_callback(
         ttools.callbacks.TensorBoardLoggingCallback(keys=keys, writer=writer,
                                                     val_writer=val_writer,
-                                                    frequency=5))
+                                                    frequency=3))
     trainer.add_callback(ttools.callbacks.ProgressBarCallback(keys=keys))
     trainer.add_callback(ttools.callbacks.CheckpointingCallback(
         check_pointer, max_files=1, max_epochs=2))
-
-    starting_epoch = extras['epoch'] if extras is not None else None
 
     trainer.train(train_dataset, num_epochs=args.epoch,
                   val_dataloader=val_dataset, starting_epoch=starting_epoch)
@@ -74,10 +78,10 @@ if __name__ == "__main__":
     parser.add_argument('--epoch', default=200, type=int, help='number of epoch in training')
     parser.add_argument('--learning_rate', default=0.001, type=float, help='learning rate in training')
     parser.add_argument('--num_point', type=int, default=1024, help='Number of points')
-    parser.add_argument('--log_dir', type=str, default=None, help='experiment root')
     parser.add_argument('--decay_rate', type=float, default=1e-4, help='decay rate')
     parser.add_argument('--use_normals', action='store_true', default=True, help='use normals')
     parser.add_argument('--process_data', action='store_true', default=True, help='save data offline')
+    parser.add_argument('--no_process_data', action='store_false', default=True, dest='process_data', help='save data offline')
     parser.add_argument('--use_uniform_sample', action='store_true', default=True, help='use uniform sampling')
     parser.add_argument('--template_dir', help="Path to Sphere templates")
 

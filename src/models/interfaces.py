@@ -1,4 +1,5 @@
 import itertools
+import os
 
 import numpy as np
 import torch
@@ -22,6 +23,7 @@ class ReconstructionInterface(ModelInterface):
         self.template_normals = template_normals[None]
 
         self.args = args
+        self.best_val_loss = float('inf')
 
         self.n_samples_per_loop_side = int(
             np.ceil(np.sqrt(args.n_samples / face_idxs.shape[0])))
@@ -99,6 +101,7 @@ class ReconstructionInterface(ModelInterface):
             _loss) if args.cuda else _loss
 
         if args.cuda:
+            cuda = torch.device("cuda")
             self.model.cuda()
             self._compute_losses.cuda()
 
@@ -161,7 +164,8 @@ class ReconstructionInterface(ModelInterface):
         planar_loss = losses_dict['planar_loss']
         template_normals_loss = losses_dict['template_normals_loss']
         symmetry_loss = losses_dict['symmetry_loss']
-        return {
+
+        final_loss = {
             'loss': (running_data['loss'] * count +
                      loss.mean().item() * n) / (count + n),
             'chamfer_loss': (running_data['chamfer_loss'] * count +
@@ -178,6 +182,18 @@ class ReconstructionInterface(ModelInterface):
                               + symmetry_loss.mean().item() * n) / (count + n),
             'count': count + n
         }
+
+        if final_loss['loss'] < self.best_val_loss:
+            path = os.path.join(self.args.checkpoint_dir, 'best_val_loss.pth')
+            torch.save({
+                'model_state_dict': self.model.state_dict(),
+                'optimizer_state_dict': self.optimizer.state_dict(),
+                'loss': final_loss['loss'],
+                'epoch': count//n
+            }, path)
+            self.best_val_loss = final_loss['loss']
+
+        return final_loss
 
 
 wheel_idxs = list(range(24))
