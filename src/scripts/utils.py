@@ -162,9 +162,9 @@ def load_modelnet(args):
     train_dataset = ModelNetDataLoader(root=args.dataset_path, args=args, split='train', process_data=args.process_data)
     val_dataset = ModelNetDataLoader(root=args.dataset_path, args=args, split='val', process_data=args.process_data)
     train_data_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                                    num_workers=10, drop_last=True)
+                                                    num_workers=4, drop_last=True)
     val_data_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
-                                                   num_workers=10)
+                                                   num_workers=4)
     return train_data_loader, val_data_loader
 
 
