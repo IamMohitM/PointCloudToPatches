@@ -16,10 +16,10 @@ class ReconstructionModel(nn.Module):
         self.decode = nn.Sequential(
             nn.LayerNorm(1024),
             nn.LeakyReLU(),
-            nn.Linear(1024, 512),
-            nn.LayerNorm(512),
-            nn.LeakyReLU(),
-            nn.Linear(512, 256),
+            nn.Linear(1024, 256),
+            # nn.LayerNorm(512),
+            # nn.LeakyReLU(),
+            # nn.Linear(512, 256),
             nn.LayerNorm(256),
             nn.LeakyReLU(),
         )
