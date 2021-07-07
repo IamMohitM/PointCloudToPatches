@@ -48,13 +48,16 @@ def train(args):
     keys = ['loss', 'chamfer_loss', 'normals_loss', 'collision_loss',
             'planar_loss', 'template_normals_loss', 'symmetry_loss']
 
+    template_used = os.path.basename(args.template_dir)
     writer = SummaryWriter(
         os.path.join(args.checkpoint_dir, 'summaries',
-                     datetime.datetime.now().strftime('training_log_%m%d%y_%H%M%S')),
+                     datetime.datetime.now().strftime(
+                         'training_log_%m-%d-%y_%H-%M-%S-') + f'{args.batch_size}-{template_used}'),
         flush_secs=1)
     val_writer = SummaryWriter(
         os.path.join(args.checkpoint_dir, 'summaries',
-                     datetime.datetime.now().strftime('validation_log_%m%d%y_%H%M%S')),
+                     datetime.datetime.now().strftime(
+                         'validation_log_%m-%d-%y_%H-%M-%S-') + f'{args.batch_size}-{template_used}'),
         flush_secs=1)
 
     trainer = ttools.Trainer(interface)
