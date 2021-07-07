@@ -13,8 +13,9 @@ class ReconstructionInterface(ModelInterface):
                  edge_data, vertex_t, adjacencies, junction_order,
                  template_normals, symmetries=None):
         self.model = model
+        self.epoch_num = 0
         if args.cuda:
-            cuda = torch.device("cuda")
+            self.model = torch.nn.DataParallel(self.model)
             self.model.cuda()
 
         self.vertex_idxs = vertex_idxs
@@ -167,6 +168,7 @@ class ReconstructionInterface(ModelInterface):
         planar_loss = losses_dict['planar_loss']
         template_normals_loss = losses_dict['template_normals_loss']
         symmetry_loss = losses_dict['symmetry_loss']
+        self.epoch_num += 1
 
         final_loss = {
             'loss': (running_data['loss'] * count +
@@ -192,7 +194,7 @@ class ReconstructionInterface(ModelInterface):
                 'model_state_dict': self.model.state_dict(),
                 'optimizer_state_dict': self.optimizer.state_dict(),
                 'loss': final_loss['loss'],
-                'epoch': count // n,
+                'epoch': self.epoch_num,
                 'step_scheduler': self.step_scheduler.state_dict()
             }, path)
             self.best_val_loss = final_loss['loss']
@@ -267,7 +269,7 @@ class Loss(torch.nn.Module):
         else:
             template_normals_loss = torch.zeros_like(chamfer_loss)
 
-        del target_normals, normals, target_points
+        del target_normals, normals, target_points, chamferloss_a, chamferloss_b, normalsloss_a, normalsloss_b
 
         if self.args.w_planar > 0:
             planar_loss = loss_utils.planar_patch_loss(st, points, mtds)
@@ -340,7 +342,7 @@ class Loss(torch.nn.Module):
                     [collision_loss, torch.exp(-(d / self.args.sigma_collision) ** 2)],
                     dim=1)
 
-            del triangles
+            del triangles, triangles1, triangles2, triangle_idxs, idxs
 
             if n_adjacent_intersections + n_nonadjacent_intersections > 0:
                 collision_loss = collision_loss.sum(-1).mean()
@@ -355,7 +357,7 @@ class Loss(torch.nn.Module):
                self.args.w_templatenormals * template_normals_loss + \
                self.args.w_symmetry * symmetry_loss
 
-        loss_dict = {
+        return {
             'loss': loss,
             'chamfer_loss': chamfer_loss,
             'normals_loss': normals_loss,
@@ -364,4 +366,3 @@ class Loss(torch.nn.Module):
             'template_normals_loss': template_normals_loss,
             'symmetry_loss': symmetry_loss,
         }
-        return loss_dict
