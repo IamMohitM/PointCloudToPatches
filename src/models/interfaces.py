@@ -32,7 +32,7 @@ class ReconstructionInterface(ModelInterface):
         self.n_samples_per_loop_side = int(
             np.ceil(np.sqrt(args.n_samples / face_idxs.shape[0])))
 
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=args.decay_rate)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=args.learning_rate)
         self.step_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=args.decay_step,
                                                               gamma=args.decay_rate)
         # These represent the order of control points on the curve

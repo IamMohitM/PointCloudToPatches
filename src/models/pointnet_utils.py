@@ -13,9 +13,9 @@ class STN3d(nn.Module):
         self.conv1 = torch.nn.Conv1d(channel, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
         self.conv3 = torch.nn.Conv1d(128, 1024, 1)
-        self.fc1 = nn.Linear(1024, 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, 9)
+        self.fc1 = nn.Linear(1024, 512)
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, 9)
         self.relu = nn.ReLU()
 
         self.bn1 = nn.BatchNorm1d(64)
@@ -32,8 +32,8 @@ class STN3d(nn.Module):
         x = torch.max(x, 2, keepdim=True)[0]
         x = x.view(-1, 1024)
 
-        x = F.relu(self.bn5(self.fc1(x)))
-        x = F.relu(self.bn2(self.fc2(x)))
+        x = F.relu(self.bn4(self.fc1(x)))
+        x = F.relu(self.bn5(self.fc2(x)))
         x = self.fc3(x)
 
         iden = Variable(torch.from_numpy(np.array([1, 0, 0, 0, 1, 0, 0, 0, 1]).astype(np.float32))).view(1, 9).repeat(
@@ -51,9 +51,9 @@ class STNkd(nn.Module):
         self.conv1 = torch.nn.Conv1d(k, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
         self.conv3 = torch.nn.Conv1d(128, 1024, 1)
-        self.fc1 = nn.Linear(1024, 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, k * k)
+        self.fc1 = nn.Linear(1024, 512)
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, k * k)
         self.relu = nn.ReLU()
 
         self.bn1 = nn.BatchNorm1d(64)
@@ -72,8 +72,8 @@ class STNkd(nn.Module):
         x = torch.max(x, 2, keepdim=True)[0]
         x = x.view(-1, 1024)
 
-        x = F.relu(self.bn5(self.fc1(x)))
-        x = F.relu(self.bn2(self.fc2(x)))
+        x = F.relu(self.bn4(self.fc1(x)))
+        x = F.relu(self.bn5(self.fc2(x)))
         x = self.fc3(x)
 
         iden = Variable(torch.from_numpy(np.eye(self.k).flatten().astype(np.float32))).view(1, self.k * self.k).repeat(
