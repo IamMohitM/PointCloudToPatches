@@ -105,8 +105,8 @@ class ReconstructionInterface(ModelInterface):
         self._compute_losses = torch.nn.DataParallel(
             _loss) if args.cuda else _loss
 
-        if args.cuda:
-            self._compute_losses.cuda()
+        # if args.cuda:
+        #     self._compute_losses.cuda()
 
     def forward(self, batch):
         points, target = batch
