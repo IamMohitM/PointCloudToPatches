@@ -15,7 +15,7 @@ class ReconstructionInterface(ModelInterface):
         self.model = model
         self.epoch_num = 0
         if args.cuda:
-            self.model = torch.nn.DataParallel(self.model)
+            # self.model = torch.nn.DataParallel(self.model)
             self.model.cuda()
 
         self.vertex_idxs = vertex_idxs
@@ -105,8 +105,8 @@ class ReconstructionInterface(ModelInterface):
         self._compute_losses = torch.nn.DataParallel(
             _loss) if args.cuda else _loss
 
-        # if args.cuda:
-        #     self._compute_losses.cuda()
+        if args.cuda:
+            self._compute_losses.cuda()
 
     def forward(self, batch):
         points, target = batch
