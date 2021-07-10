@@ -46,7 +46,7 @@ def train(args):
     # extras, _ = check_pointer.load_latest()
 
     keys = ['loss', 'chamfer_loss', 'normals_loss', 'collision_loss',
-            'planar_loss', 'template_normals_loss', 'symmetry_loss']
+            'planar_loss', 'template_normals_loss']
 
     template_used = os.path.basename(args.template_dir)
     writer = SummaryWriter(

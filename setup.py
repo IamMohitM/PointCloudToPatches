@@ -5,4 +5,4 @@ setup(name="point_cloud_to_patches",
       description="Package to Train a DNN to produce Coons Patch control points from point clouds",
       version="1.0.0",
       packages=find_packages(include=["src", "src.*"]),
-      install_requires=["torch", "numpy", "torch-tools", "tqdm"])
+      install_requires=["torch", "numpy", "torch-tools", "tqdm", "tensorboard"])

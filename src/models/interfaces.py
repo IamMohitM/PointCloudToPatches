@@ -123,7 +123,7 @@ class ReconstructionInterface(ModelInterface):
 
         params = self.model(points)
 
-        vertices, patches = utils.process_patches(
+        _, patches = utils.process_patches(
             params, self.vertex_idxs, self.face_idxs, self.edge_data,
             self.junctions, self.junction_order, self.vertex_t)
 
@@ -135,7 +135,7 @@ class ReconstructionInterface(ModelInterface):
         mtds = coons.coons_mtds(st[..., 0], st[..., 1], patches)
 
         return {'patches': patches, 'points': points, 'normals': normals,
-                'mtds': mtds, 'st': st, 'params': params, 'vertices': vertices}
+                'mtds': mtds, 'st': st, 'params': params}
 
     def training_step(self, batch):
         self.model.train()
@@ -151,7 +151,7 @@ class ReconstructionInterface(ModelInterface):
 
     def init_validation(self):
         losses = ['loss', 'chamfer_loss', 'normals_loss', 'collision_loss',
-                  'planar_loss', 'template_normals_loss', 'symmetry_loss']
+                  'planar_loss', 'template_normals_loss']
         ret = {loss: 0 for loss in losses}
         ret['count'] = 0
         return ret
@@ -167,7 +167,6 @@ class ReconstructionInterface(ModelInterface):
         collision_loss = losses_dict['collision_loss']
         planar_loss = losses_dict['planar_loss']
         template_normals_loss = losses_dict['template_normals_loss']
-        symmetry_loss = losses_dict['symmetry_loss']
         self.epoch_num += 1
 
         final_loss = {
@@ -183,8 +182,6 @@ class ReconstructionInterface(ModelInterface):
                             planar_loss.mean().item() * n) / (count + n),
             'template_normals_loss': (running_data['template_normals_loss'] * count +
                                       template_normals_loss.mean().item() * n) / (count + n),
-            'symmetry_loss': (running_data['symmetry_loss'] * count
-                              + symmetry_loss.mean().item() * n) / (count + n),
             'count': count + n
         }
 
@@ -200,10 +197,6 @@ class ReconstructionInterface(ModelInterface):
             self.best_val_loss = final_loss['loss']
 
         return final_loss
-
-
-wheel_idxs = list(range(24))
-no_wheel_idxs = list(range(24, 43))
 
 
 class Loss(torch.nn.Module):
@@ -234,7 +227,6 @@ class Loss(torch.nn.Module):
         points = fwd_data['points']
         normals = fwd_data['normals']
         mtds = fwd_data['mtds']
-        vertices = fwd_data['vertices']
 
         target_points = batch[0][:, :, :3].to(points)  # [b, n_points, 3]
         # target_points = batch['points'].to(points)  # [b, n_points, 3]
@@ -243,8 +235,6 @@ class Loss(torch.nn.Module):
         b, n_patches, _, _ = patches.shape
 
         st = fwd_data['st']
-
-        symmetry_loss = patches.new_zeros(1)
 
         mtds = mtds.view(b, -1)
 
@@ -277,6 +267,7 @@ class Loss(torch.nn.Module):
             planar_loss = torch.zeros_like(chamfer_loss)
 
         del points, mtds
+        torch.cuda.empty_cache()
 
         if self.args.w_collision > 0:
             collision_loss = chamfer_loss.new_zeros([b, 0])
@@ -354,8 +345,7 @@ class Loss(torch.nn.Module):
         loss = chamfer_loss + self.args.w_normals * normals_loss + \
                self.args.w_collision * collision_loss + \
                self.args.w_planar * planar_loss + \
-               self.args.w_templatenormals * template_normals_loss + \
-               self.args.w_symmetry * symmetry_loss
+               self.args.w_templatenormals * template_normals_loss
 
         return {
             'loss': loss,
@@ -364,5 +354,4 @@ class Loss(torch.nn.Module):
             'collision_loss': collision_loss,
             'planar_loss': planar_loss,
             'template_normals_loss': template_normals_loss,
-            'symmetry_loss': symmetry_loss,
         }
