@@ -28,7 +28,7 @@ def train(args):
 
     starting_epoch = None
     template_used = os.path.basename(args.template_dir)
-    checkpoint_path = os.path.join(args.checkpoint_dir, f'best_val_loss_{args.batch_size}_{template_used}.pth')
+    checkpoint_path = os.path.join(args.checkpoint_dir, f'best_val_loss_{args.batch_size}_{template_used}_{args.checkpoint_suffix}.pth')
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -113,6 +113,7 @@ if __name__ == "__main__":
     parser.add_argument('--symmetries', dest='symmetries', action='store_true')
     parser.add_argument('--no-symmetries',
                         dest='symmetries', action='store_false')
+    parser.add_argument('--checkpoint_suffix', required=True, help='suffix to add to the checkpoint')
     parser.set_defaults(seperate_turbines=False, wheels=False, p2m=False,
                         symmetries=False, num_worker_threads=8)
 

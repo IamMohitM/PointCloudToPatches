@@ -187,7 +187,8 @@ class ReconstructionInterface(ModelInterface):
         }
 
         if final_loss['loss'] < self.best_val_loss:
-            path = os.path.join(self.args.checkpoint_dir, f'best_val_loss_{self.args.batch_size}_{self.template_used}.pth')
+            path = os.path.join(self.args.checkpoint_dir,
+                                f'best_val_loss_{self.args.batch_size}_{self.template_used}_{self.args.checkpoint_suffix}.pth')
             torch.save({
                 'model_state_dict': self.model.state_dict(),
                 'optimizer_state_dict': self.optimizer.state_dict(),
