@@ -53,7 +53,7 @@ class ModelNetDataLoader(Dataset):
         """
         self.root = root
         self.n_points = args.num_point
-        self.process_data = process_data
+        self.process_data = args.process_data
         self.uniform = args.use_uniform_sample
         self.use_normals = args.use_normals
         self.num_category = args.num_category
@@ -87,7 +87,6 @@ class ModelNetDataLoader(Dataset):
                                           'modelnet%d_%s_%dpts_fps.dat' % (self.num_category, split, self.n_points))
         else:
             self.save_path = os.path.join(root, 'modelnet%d_%s_%dpts.dat' % (self.num_category, split, self.n_points))
-        print(self.process_data)
         if self.process_data:
             if not os.path.exists(self.save_path):
                 print('Processing data %s (only running in the first time)...' % self.save_path)

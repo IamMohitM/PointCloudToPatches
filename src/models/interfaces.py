@@ -27,6 +27,7 @@ class ReconstructionInterface(ModelInterface):
         self.template_normals = template_normals[None]
 
         self.args = args
+        self.template_used = os.path.basename(args.template_dir)
         self.best_val_loss = float('inf')
 
         self.n_samples_per_loop_side = int(
@@ -186,7 +187,7 @@ class ReconstructionInterface(ModelInterface):
         }
 
         if final_loss['loss'] < self.best_val_loss:
-            path = os.path.join(self.args.checkpoint_dir, 'best_val_loss.pth')
+            path = os.path.join(self.args.checkpoint_dir, f'best_val_loss_{self.args.batch_size}_{self.template_used}.pth')
             torch.save({
                 'model_state_dict': self.model.state_dict(),
                 'optimizer_state_dict': self.optimizer.state_dict(),

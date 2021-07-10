@@ -27,9 +27,10 @@ def train(args):
                                         template_parameters["symmetries"])
 
     starting_epoch = None
-
-    if os.path.exists(os.path.join(args.checkpoint_dir, 'best_val_loss.pth')):
-        checkpoint = torch.load(os.path.join(args.checkpoint_dir, 'best_val_loss.pth'))
+    template_used = os.path.basename(args.template_dir)
+    checkpoint_path = os.path.join(args.checkpoint_dir, f'best_val_loss_{args.batch_size}_{template_used}.pth')
+    if os.path.exists(checkpoint_path):
+        checkpoint = torch.load(checkpoint_path)
         model.load_state_dict(checkpoint['model_state_dict'])
         interface.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         interface.best_val_loss = checkpoint['loss']
@@ -48,7 +49,6 @@ def train(args):
     keys = ['loss', 'chamfer_loss', 'normals_loss', 'collision_loss',
             'planar_loss', 'template_normals_loss']
 
-    template_used = os.path.basename(args.template_dir)
     writer = SummaryWriter(
         os.path.join(args.checkpoint_dir, 'summaries',
                      datetime.datetime.now().strftime(
