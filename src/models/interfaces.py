@@ -110,7 +110,7 @@ class ReconstructionInterface(ModelInterface):
             self._compute_losses.cuda()
 
     def forward(self, batch):
-        points, target = batch
+        points, _ = batch
         # DATA AUGMENTATION
         point = points.data.numpy()
         points = utils.random_point_dropout(point)
@@ -120,7 +120,7 @@ class ReconstructionInterface(ModelInterface):
         points = points.transpose(2, 1)
 
         if self.args.cuda:
-            points, target = points.cuda(), target.cuda()
+            points = points.cuda()
 
         params = self.model(points)
 
@@ -146,7 +146,6 @@ class ReconstructionInterface(ModelInterface):
         loss = losses_dict['loss']
         loss.mean().backward()
         self.optimizer.step()
-        self.step_scheduler.step()
 
         return {k: v.mean().item() for k, v in losses_dict.items()}
 
@@ -158,6 +157,7 @@ class ReconstructionInterface(ModelInterface):
         return ret
 
     def validation_step(self, batch, running_data):
+        self.step_scheduler.step()
         self.model.eval()
         count = running_data['count']
         n = batch[0].shape[0]
