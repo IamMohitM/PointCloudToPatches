@@ -70,10 +70,11 @@ class ModelNetDataLoader(Dataset):
         if self.num_category == 10:
             shape_ids['train'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet10_train_new.txt'))]
             shape_ids['test'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet10_test_new.txt'))]
-            shape_ids['val'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet10_test_new.txt'))]
+            shape_ids['val'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet10_val_new.txt'))]
         else:
-            shape_ids['train'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet40_train.txt'))]
-            shape_ids['test'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet40_test.txt'))]
+            shape_ids['train'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet40_train_new.txt'))]
+            shape_ids['test'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet40_test_new.txt'))]
+            shape_ids['val'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet40_val_new.txt'))]
             raise AssertionError("No!")
 
         assert (split in ['train', 'test', 'val'])
