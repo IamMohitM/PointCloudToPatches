@@ -107,6 +107,24 @@ def coons_sample(s, t, params):
     return Lc + Ld - B  # final patch
 
 
+def extract_curves(params):
+    """
+
+    :param params:
+    :return:
+    """
+    s= torch.linspace(0, 1, 50)
+    sides = [params[..., :4, :], params[..., 3:7, :],
+             params[..., 6:10, :], params[..., [9, 10, 11, 0], :]]
+
+    curve_1 = bezier_sample(s[..., None], sides[0])
+    curve_2 = bezier_sample(s[..., None], sides[1])
+    curve_3 = bezier_sample(s[..., None], sides[2])
+    curve_4 = bezier_sample(s[..., None], sides[3])
+
+    return torch.stack((curve_1, curve_2, curve_3, curve_4), dim=1)
+
+
 def process_patches(params, vertex_idxs, face_idxs, edge_data, junctions,
                     junction_order, vertex_t):
     """Process all junction curves to compute explicit patch control points."""
@@ -291,3 +309,31 @@ def shift_point_cloud(batch_data, shift_range=0.1):
     for batch_index in range(B):
         batch_data[batch_index,:,:] += shifts[batch_index,:]
     return batch_data
+
+def write_curves(file, patches):
+    patch_vertices = extract_curves(patches).cpu().numpy()
+    line_list = []
+    face_list = []
+    vertex_index = 1
+    with open(file, 'w') as f:
+        for patch in patch_vertices:
+            start_face_index = vertex_index
+            for curves in patch:
+                start_line_index = vertex_index
+                for x, y, z in curves:
+                    f.write(f'v {x} {y} {z}\n')
+                    vertex_index += 1
+                line_list.append(torch.arange(start_line_index, vertex_index))
+            face_list.append(torch.arange(start_face_index, vertex_index))
+
+        for line in line_list:
+            f.write('l')
+            for v in line:
+                f.write(f' {v}')
+            f.write('\n')
+
+        for face in face_list:
+            f.write('f')
+            for v in face:
+                f.write(f' {v}')
+            f.write('\n')
