@@ -75,7 +75,6 @@ class ModelNetDataLoader(Dataset):
             shape_ids['train'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet40_train_new.txt'))]
             shape_ids['test'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet40_test_new.txt'))]
             shape_ids['val'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet40_val_new.txt'))]
-            raise AssertionError("No!")
 
         assert (split in ['train', 'test', 'val'])
         shape_names = ['_'.join(x.split('_')[0:-1]) for x in shape_ids[split]]
