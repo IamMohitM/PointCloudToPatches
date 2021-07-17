@@ -14,7 +14,7 @@ from src.scripts import utils
 def train(args):
     train_dataset, val_dataset = utils.load_modelnet(args)
     template_parameters = utils.load_template_parameters(args)
-    model = ReconstructionModel(len(template_parameters['initial_parameters']),
+    model = ReconstructionModel(args, len(template_parameters['initial_parameters']),
                                 init=template_parameters['initial_parameters'])
     interface = ReconstructionInterface(model, args, template_parameters["vertex_idxs"],
                                         template_parameters["face_idxs"],
@@ -114,8 +114,17 @@ if __name__ == "__main__":
     parser.add_argument('--no-symmetries',
                         dest='symmetries', action='store_false')
     parser.add_argument('--checkpoint_suffix', required=True, help='suffix to add to the checkpoint')
+
+    parser.add_argument('--encoder', type=str, default="pointnet")
+    parser.add_argument('--emb_dims', type=int, default=1024, metavar='N',
+                        help='Dimension of embeddings')
+    parser.add_argument('--k', type=int, default=20, metavar='N',
+                        help='Num of nearest neighbors to use')
+
     parser.set_defaults(seperate_turbines=False, wheels=False, p2m=False,
                         symmetries=False, num_worker_threads=8)
+
+
 
     args = parser.parse_args()
 
