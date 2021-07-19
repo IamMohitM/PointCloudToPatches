@@ -9,6 +9,7 @@ from src.scripts import utils, loss_utils, coons
 
 
 class ReconstructionInterface(ModelInterface):
+
     def __init__(self, model, args, vertex_idxs, face_idxs, junctions,
                  edge_data, vertex_t, adjacencies, junction_order,
                  template_normals, symmetries=None):
@@ -34,8 +35,13 @@ class ReconstructionInterface(ModelInterface):
             np.ceil(np.sqrt(args.n_samples / face_idxs.shape[0])))
 
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=args.learning_rate)
-        self.step_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=args.decay_step,
-                                                              gamma=args.decay_rate)
+        if args.scheduler:
+            self.scheduler = args.schedulertorch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
+                                                                                      mode='min',
+                                                                                      factor=args.decay_rate,
+                                                                                      patience=1,
+                                                                                      min_lr=0.000005,
+                                                                                      verbose=True)
         # These represent the order of control points on the curve
         self.edge_idxs = [[0, 1, 2, 3], [3, 4, 5, 6],
                           [6, 7, 8, 9], [9, 10, 11, 0]]
@@ -146,8 +152,9 @@ class ReconstructionInterface(ModelInterface):
         loss = losses_dict['loss']
         loss.mean().backward()
         self.optimizer.step()
-
-        return {k: v.mean().item() for k, v in losses_dict.items()}
+        losses_dict = {k: v.mean().item() for k, v in losses_dict.items()}
+        losses_dict['learning_rate'] = utils.get_lr(self.optimizer)
+        return losses_dict
 
     def init_validation(self):
         losses = ['loss', 'chamfer_loss', 'normals_loss', 'collision_loss',
@@ -157,7 +164,6 @@ class ReconstructionInterface(ModelInterface):
         return ret
 
     def validation_step(self, batch, running_data):
-        self.step_scheduler.step()
         self.model.eval()
         count = running_data['count']
         n = batch[0].shape[0]
@@ -170,7 +176,9 @@ class ReconstructionInterface(ModelInterface):
         template_normals_loss = losses_dict['template_normals_loss']
         self.epoch_num += 1
 
-        final_loss = {
+        # self.step_scheduler.step(loss.mean())
+
+        return {
             'loss': (running_data['loss'] * count +
                      loss.mean().item() * n) / (count + n),
             'chamfer_loss': (running_data['chamfer_loss'] * count +
@@ -183,22 +191,9 @@ class ReconstructionInterface(ModelInterface):
                             planar_loss.mean().item() * n) / (count + n),
             'template_normals_loss': (running_data['template_normals_loss'] * count +
                                       template_normals_loss.mean().item() * n) / (count + n),
-            'count': count + n
+            'count': count + n,
+            'learning_rate': utils.get_lr(self.optimizer)
         }
-
-        if final_loss['loss'] < self.best_val_loss:
-            path = os.path.join(self.args.checkpoint_dir,
-                                f'best_val_loss_{self.args.batch_size}_{self.template_used}_{self.args.checkpoint_suffix}.pth')
-            torch.save({
-                'model_state_dict': self.model.state_dict(),
-                'optimizer_state_dict': self.optimizer.state_dict(),
-                'loss': final_loss['loss'],
-                'epoch': self.epoch_num,
-                'step_scheduler': self.step_scheduler.state_dict()
-            }, path)
-            self.best_val_loss = final_loss['loss']
-
-        return final_loss
 
 
 class Loss(torch.nn.Module):

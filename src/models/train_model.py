@@ -28,18 +28,18 @@ def train(args):
 
     starting_epoch = None
     template_used = os.path.basename(args.template_dir)
-    checkpoint_path = os.path.join(args.checkpoint_dir, f'best_val_loss_{args.batch_size}_{template_used}_{args.checkpoint_suffix}.pth')
+    checkpoint_path = os.path.join(args.checkpoint_dir, f'best_val_loss.pth')
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
         model.load_state_dict(checkpoint['model_state_dict'])
         interface.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         interface.best_val_loss = checkpoint['loss']
-        interface.step_scheduler.load_state_dict(checkpoint['step_scheduler'])
+        interface.scheduler.load_state_dict(checkpoint['step_scheduler'])
         starting_epoch = checkpoint['epoch']
 
         print(
             f'Loading checkpoint and starting training from epoch {starting_epoch} and current learning rate \
-            {interface.step_scheduler.get_lr()}')
+            {interface.scheduler.get_lr()}')
 
     check_pointer = ttools.Checkpointer(
         args.checkpoint_dir, model=model, optimizers=interface.optimizer)
@@ -47,7 +47,7 @@ def train(args):
     # extras, _ = check_pointer.load_latest()
 
     keys = ['loss', 'chamfer_loss', 'normals_loss', 'collision_loss',
-            'planar_loss', 'template_normals_loss']
+            'planar_loss', 'template_normals_loss', 'learning_rate']
 
     writer = SummaryWriter(
         os.path.join(args.checkpoint_dir, 'summaries',

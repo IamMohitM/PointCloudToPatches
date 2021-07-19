@@ -113,7 +113,7 @@ def extract_curves(params):
     :param params:
     :return:
     """
-    s= torch.linspace(0, 1, 50)
+    s = torch.linspace(0, 1, 50)
     sides = [params[..., :4, :], params[..., 3:7, :],
              params[..., 6:10, :], params[..., [9, 10, 11, 0], :]]
 
@@ -175,15 +175,18 @@ def load_modelnet(args):
     """
     Loads ModelNet Dataset
     :param args:
-    :return: torch Dataloader of training and test dataset
+    :return: torch Dataloader of training, validation and test dataset
     """
     train_dataset = ModelNetDataLoader(root=args.dataset_path, args=args, split='train', process_data=args.process_data)
     val_dataset = ModelNetDataLoader(root=args.dataset_path, args=args, split='val', process_data=args.process_data)
     train_data_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                                    num_workers=4, drop_last=True)
+                                                    num_workers=args.num_worker_threads, drop_last=True)
     val_data_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
-                                                   num_workers=4)
-    return train_data_loader, val_data_loader
+                                                  num_workers=args.num_worker_threads)
+    test_dataset = ModelNetDataLoader(root=args.dataset_path, args=args, split='test', process_data=args.process_data)
+    test_data_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True,
+                                                   num_workers=args.num_worker_threads, drop_last=True)
+    return train_data_loader, val_data_loader, test_data_loader
 
 
 def load_template_parameters(args):
@@ -305,10 +308,11 @@ def shift_point_cloud(batch_data, shift_range=0.1):
           BxNx3 array, shifted batch of point clouds
     """
     B, N, C = batch_data.shape
-    shifts = np.random.uniform(-shift_range, shift_range, (B,3))
+    shifts = np.random.uniform(-shift_range, shift_range, (B, 3))
     for batch_index in range(B):
-        batch_data[batch_index,:,:] += shifts[batch_index,:]
+        batch_data[batch_index, :, :] += shifts[batch_index, :]
     return batch_data
+
 
 def write_curves(file, patches):
     patch_vertices = extract_curves(patches).cpu().numpy()
@@ -376,3 +380,30 @@ def get_graph_feature(x, k=20, idx=None):
     feature = torch.cat((feature - x, x), dim=3).permute(0, 3, 1, 2).contiguous()
 
     return feature
+
+
+def load_pretrained(model, checkpoint_path):
+    checkpoint_dict = torch.load(checkpoint_path)
+    count = 0
+    model_dict = model.state_dict()
+    for k, v in checkpoint_dict['model_state_dict'].items():
+        if k in model_dict.keys():
+            count += 1
+            model_dict[k] = v
+    model.load_state_dict(model_dict)
+    print(f'Loaded weights of {count} layers')
+    return model
+
+
+def get_lr(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr']
+
+
+
+def get_loss_on_dataset(interface, test_dataset):
+    with torch.no_grad():
+        running_data = interface.init_validation()
+        for batch_id, batch in enumerate(test_dataset):
+            running_data = interface.validation_step(batch, running_data)
+        return running_data
