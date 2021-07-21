@@ -34,14 +34,13 @@ class ReconstructionInterface(ModelInterface):
         self.n_samples_per_loop_side = int(
             np.ceil(np.sqrt(args.n_samples / face_idxs.shape[0])))
 
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=args.learning_rate)
+        if args.optimizer:
+            self.optimizer = args.optimizer
+        else:
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
         if args.scheduler:
-            self.scheduler = args.schedulertorch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
-                                                                                      mode='min',
-                                                                                      factor=args.decay_rate,
-                                                                                      patience=1,
-                                                                                      min_lr=0.000005,
-                                                                                      verbose=True)
+            self.scheduler = args.scheduler
+
         # These represent the order of control points on the curve
         self.edge_idxs = [[0, 1, 2, 3], [3, 4, 5, 6],
                           [6, 7, 8, 9], [9, 10, 11, 0]]
