@@ -4,8 +4,7 @@ from collections import defaultdict
 
 import numpy as np
 import torch
-
-from src.data.dataset_prep import ModelNetDataLoader
+from src.data.dataset_prep import ModelNetDataLoader, farthest_point_sample, pc_normalize
 from src.scripts.coons import coons_normals
 
 
@@ -314,7 +313,7 @@ def shift_point_cloud(batch_data, shift_range=0.1):
     return batch_data
 
 
-def write_curves(file, patches):
+def write_curves(patches, file):
     patch_vertices = extract_curves(patches).cpu().numpy()
     line_list = []
     face_list = []
@@ -383,7 +382,12 @@ def get_graph_feature(x, k=20, idx=None):
 
 
 def load_pretrained(model, checkpoint_path):
-    checkpoint_dict = torch.load(checkpoint_path)
+    if torch.cuda.is_available():
+        device = None
+    else:
+        device = 'cpu'
+
+    checkpoint_dict = torch.load(checkpoint_path, map_location=device)
     count = 0
     model_dict = model.state_dict()
     for k, v in checkpoint_dict['model_state_dict'].items():
@@ -400,10 +404,30 @@ def get_lr(optimizer):
         return param_group['lr']
 
 
-
 def get_loss_on_dataset(interface, test_dataset):
     with torch.no_grad():
         running_data = interface.init_validation()
         for batch_id, batch in enumerate(test_dataset):
             running_data = interface.validation_step(batch, running_data)
         return running_data
+
+
+def read_pc_file(filename):
+    point_set = np.loadtxt(filename, delimiter=',').astype(np.float32)
+    return point_set
+
+
+def reconstruct_file(model, template_params, pc_file, curve_path):
+    points = read_pc_file(pc_file)
+    points = farthest_point_sample(points, 1024)
+    points[:, 0:3] = pc_normalize(points[:, 0:3])
+    points = torch.from_numpy(points)
+    points = points.transpose(1, 0)
+    params = model(points[None])
+
+    _, patches = process_patches(
+        params, template_params['vertex_idxs'], template_params['face_idxs'], template_params['edge_data'],
+        template_params['junctions'], template_params['junction_order'], template_params['vertex_t'])
+    patches = patches.squeeze(0)
+
+    write_curves(patches, curve_path)

@@ -1,22 +1,12 @@
-import argparse, torch
-import ast
+import argparse
+import os
+import pickle
 
 import numpy as np
-import os
-
-from collections import defaultdict
-from src.data.dataset_prep import ModelNetDataLoader
+import src.scripts.utils as utils
+import torch
 from src.models.PointnetModel import ReconstructionModel
 from src.models.interfaces import ReconstructionInterface
-import src.scripts.utils as utils
-import src.scripts.coons as coons
-from src.data.dataset_prep import farthest_point_sample, pc_normalize
-
-
-def read_pc_file(filename):
-    point_set = np.loadtxt(filename, delimiter=',').astype(np.float32)
-    return point_set
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser('training')
@@ -59,125 +49,52 @@ if __name__ == "__main__":
     parser.set_defaults(seperate_turbines=False, wheels=False, p2m=False,
                         symmetries=False, num_worker_threads=8)
 
+    parser.add_argument('--encoder', type=str, default="pointnet")
+    parser.add_argument('--emb_dims', type=int, default=1024, metavar='N',
+                        help='Dimension of embeddings')
+    parser.add_argument('--k', type=int, default=20, metavar='N',
+                        help='Num of nearest neighbors to use')
+    parser.set_defaults(optimizer=None, scheduler=None)
+
     args = parser.parse_args()
 
-    test_dataset = ModelNetDataLoader(args.dataset_path, args, split='test', process_data=True, )
-    test_data_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
-                                                  num_workers=4)
+    with open('../../dataset/sphere54_params.pkl', 'rb') as f:
+        template_parameters = pickle.load(f)
 
-    # for i, batch in enumerate(test_data_loader):
-    #     print(batch[0].shape)
-    #     break
-    #     losses_dict = interface._compute_losses(batch, interface.forward(batch))
-    #     loss = losses_dict['loss'].mean()
-    #     chamfer_loss = losses_dict['chamfer_loss'].mean()
-    #     print(f'Batch {i} - {loss}, {chamfer_loss}')
-    #     loss_list.append(loss)
-    #
-    # print(f"Average Loss {torch.mean(loss_list)}")
-    #
-
-    line_data = [line.strip().split(' ') for line in open(
-        os.path.join(args.template_dir, 'edges.txt'), 'r')]
-    line_data = [(int(a), int(b), int(c), int(d)) for a, b, c, d in line_data]
-    junction_order = [int(line.strip()) for line in open(
-        os.path.join(args.template_dir, 'junction_order.txt'), 'r')]
-    topology = ast.literal_eval(
-        open(os.path.join(args.template_dir, 'topology.txt'), 'r').read())
-    adjacencies = {}
-    for i, l in enumerate(
-            open(os.path.join(args.template_dir, 'adjacencies.txt'), 'r')):
-        adj = {}
-        for x in l.strip().split(','):
-            if x != '':
-                j, edge = x.strip().split(' edge ')
-                adj[int(j)] = int(edge)
-        adjacencies[i] = adj
-
-    vertex_t = {}
-    init_params = []
-    junctions = {}
-    vertex_idxs = np.zeros(
-        [len(open(os.path.join(
-            args.template_dir, 'vertices.txt'), 'r').readlines()), 3],
-        dtype=np.int64)
-    processed_vertices = []
-    for i, l in enumerate(
-            open(os.path.join(args.template_dir, 'vertices.txt'), 'r')):
-        value = l.strip().split(' ')
-        if value[0] == 'Junction':
-            _, v0, v1, v2, v3, t_init = value  # what's the t_init value
-            vertex_t[i] = len(init_params)
-            init_params.append(utils.logit(float(t_init)))  # Why do the logit?
-            junctions[i] = (int(v0), int(v1), int(v2), int(v3))
-        elif value[0] == 'RegularVertex':
-            _, a, b, c = value
-            # Why do this?
-            vertex_idxs[i] = [len(init_params), len(
-                init_params) + 1, len(init_params) + 2]
-            init_params.extend([float(a), float(b), float(c)])
-            processed_vertices.append(i)
-
-    edge_data_ = defaultdict(list)
-    processed_edges = []
-    for i in junction_order:
-        processed_vertices.append(i)
-        for a, b, c, d in line_data:
-            # checking if a or d are regular vertex -
-            if a in processed_vertices and \
-                    d in processed_vertices and \
-                    (a, b, c, d) not in processed_edges:
-                edge_data_[i].append((a, b, c, d))
-                processed_edges.append((a, b, c, d))
-    edge_data = edge_data_
-
-    face_idxs = np.empty([len(topology), 12])
-    for i, patch in enumerate(topology):
-        for j, k in enumerate(patch):
-            face_idxs[i, j] = k
-    face_idxs = torch.from_numpy(face_idxs.astype(np.int64))
-
-    init_params = torch.tensor(init_params).squeeze()
-    init_patches = utils.process_patches(
-        init_params[None], vertex_idxs, face_idxs, edge_data, junctions,
-        junction_order, vertex_t)[1][0]
-    st = torch.empty(init_patches.shape[0], 1, 2).fill_(0.5).to(init_params)
-    template_normals = coons.coons_normals(
-        st[..., 0], st[..., 1], init_patches)
-    symmetries = None
-
-    model = ReconstructionModel(len(init_params),
-                                init=init_params)
+    model = ReconstructionModel(args, len(template_parameters['initial_parameters']),
+                                init=template_parameters['initial_parameters'])
     model_dict = model.state_dict()
-    checkpoint_dict = torch.load("../../ModelCheckpoints/best_val_loss_8_sphere54_1024_54_pretrained_0.9_8.pth",
-                                 map_location='cpu')
-    for k, v in checkpoint_dict['model_state_dict'].items():
-        if k in model_dict.keys():
-            model_dict[k] = v
-    model.load_state_dict(model_dict)
+    model_dir = os.path.join("../../ModelCheckpoints",
+                             'pretrained_modelnet40_decay0.9_step8_num_points_lr0.005_batch16__sphere54_nocollision_stepsheduler')
+    checkpoint_path = os.path.join(model_dir, "best_model.pth")
+    output_path = os.path.join(model_dir, 'reconstructed_patches')
+    os.makedirs(output_path, exist_ok=True)
 
-    interface = ReconstructionInterface(model, args, vertex_idxs, face_idxs, junctions, edge_data, vertex_t,
-        adjacencies, junction_order, template_normals, symmetries)
+    model = utils.load_pretrained(model, checkpoint_path)
+    interface = ReconstructionInterface(model, args, template_parameters["vertex_idxs"],
+                                        template_parameters["face_idxs"],
+                                        template_parameters["junctions"],
+                                        template_parameters["edge_data"],
+                                        template_parameters["vertex_t"],
+                                        template_parameters["adjacencies"],
+                                        template_parameters["junction_order"],
+                                        template_parameters["template_normals"],
+                                        template_parameters["symmetries"])
 
-    # loss_list = []
     model.eval()
 
-
+    category_file_path = os.path.join(args.dataset_path, f'modelnet{args.num_category}_shape_names.txt')
+    with open(category_file_path, 'r') as f:
+        categories = f.read().strip().split('\n')
+    with open(os.path.join(args.dataset_path, f'modelnet{args.num_category}_test_new.txt'), 'r') as f:
+        files = f.read().strip().split('\n')
+    #
+    # filenames= [os.path.join(args.dataset_path, file.split('_')[0], file) for file in files]
+    test_files = np.random.choice(files, size=50)
     with torch.no_grad():
-        category = ["bathtub", "bed", "chair", "desk", "dresser", "monitor", "night_stand", "sofa", "table", "toilet"]
-        for cat in category:
-            points = read_pc_file(f"/Users/mo/Library/Mobile Documents/com~apple~CloudDocs/Surrey Essentials/Study/Learning Critical Edge Sets from 3D Shapes/Code.nosync/PointCloudToPatches/dataset/modelnet40_normal_resampled/{cat}/{cat}_0111.txt")
-            points = farthest_point_sample(points, 1024)
-            points[:, 0:3] = pc_normalize(points[:, 0:3])
-            print(points[None].shape)
-            points = torch.from_numpy(points)
-            points = points.transpose(1,0)
-            params = model(points[None])
-
-            _, patches = utils.process_patches(
-                params, vertex_idxs, face_idxs, edge_data,
-                junctions, junction_order, vertex_t)
-            patches = patches.squeeze(0)
-            utils.write_curves(f"/Users/mo/Library/Mobile Documents/com~apple~CloudDocs/Surrey Essentials/Study/Learning Critical Edge Sets from 3D Shapes/Code.nosync/PointCloudToPatches/ignore_dir/reconstrcuted_patches/vertices_{cat}_test.obj", patches)
-
-
+        for file in test_files:
+            print(os.path.basename(file))
+            pc_file = os.path.join(os.path.join(args.dataset_path,
+                                                file.rsplit('_', maxsplit=1)[0], f'{file}.txt'))
+            output_file = os.path.join(output_path, f'{os.path.basename(pc_file)}.obj')
+            utils.reconstruct_file(model, template_parameters, pc_file, output_file)
