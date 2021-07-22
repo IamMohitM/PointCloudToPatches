@@ -7,6 +7,7 @@ import src.scripts.utils as utils
 import torch
 from src.models.PointnetModel import ReconstructionModel
 from src.models.interfaces import ReconstructionInterface
+from torch.optim.lr_scheduler import CyclicLR
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser('training')
@@ -58,14 +59,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    with open('../../dataset/sphere54_params.pkl', 'rb') as f:
+    template_parameters = utils.load_template_parameters(args)
+    template_used = os.path.basename(args.template_dir)
+    with open(f'../../dataset/{template_used}_params.pkl', 'rb') as f:
         template_parameters = pickle.load(f)
 
     model = ReconstructionModel(args, len(template_parameters['initial_parameters']),
                                 init=template_parameters['initial_parameters'])
     model_dict = model.state_dict()
     model_dir = os.path.join("../../ModelCheckpoints",
-                             'pretrained_modelnet40_decay0.9_step8_num_points_lr0.005_batch16__sphere54_nocollision_stepsheduler')
+                             'pretrained_modelnet40_1024_lr0.0001_batch16__sphere24_nocollision_cycliclrsheduler')
     checkpoint_path = os.path.join(model_dir, "best_model.pth")
     output_path = os.path.join(model_dir, 'reconstructed_patches')
     os.makedirs(output_path, exist_ok=True)
@@ -83,14 +86,14 @@ if __name__ == "__main__":
 
     model.eval()
 
-    category_file_path = os.path.join(args.dataset_path, f'modelnet{args.num_category}_shape_names.txt')
-    with open(category_file_path, 'r') as f:
-        categories = f.read().strip().split('\n')
+    # category_file_path = os.path.join(args.dataset_path, f'modelnet{args.num_category}_shape_names.txt')
+    # with open(category_file_path, 'r') as f:
+    #     categories = f.read().strip().split('\n')
     with open(os.path.join(args.dataset_path, f'modelnet{args.num_category}_test_new.txt'), 'r') as f:
         files = f.read().strip().split('\n')
     #
     # filenames= [os.path.join(args.dataset_path, file.split('_')[0], file) for file in files]
-    test_files = np.random.choice(files, size=50)
+    test_files = np.random.choice(files, size=150)
     with torch.no_grad():
         for file in test_files:
             print(os.path.basename(file))
