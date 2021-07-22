@@ -16,6 +16,10 @@ def train(args):
     template_parameters = utils.load_template_parameters(args)
     model = ReconstructionModel(args, len(template_parameters['initial_parameters']),
                                 init=template_parameters['initial_parameters'])
+
+    args.optimizer = torch.optim.Adam(model.parameters(),lr=args.learning_rate)
+    args.scheduler = torch.optim.lr_scheduler.StepLR(args.optimizer, step_size=args.decay_step,
+                                                     gamma=args.decay_rate, verbose=True)
     interface = ReconstructionInterface(model, args, template_parameters["vertex_idxs"],
                                         template_parameters["face_idxs"],
                                         template_parameters["junctions"],
@@ -34,7 +38,7 @@ def train(args):
         model.load_state_dict(checkpoint['model_state_dict'])
         interface.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         interface.best_val_loss = checkpoint['loss']
-        interface.scheduler.load_state_dict(checkpoint['step_scheduler'])
+        interface.scheduler.load_state_dict(checkpoint['scheduler'])
         starting_epoch = checkpoint['epoch']
 
         print(
@@ -122,7 +126,7 @@ if __name__ == "__main__":
                         help='Num of nearest neighbors to use')
 
     parser.set_defaults(seperate_turbines=False, wheels=False, p2m=False,
-                        symmetries=False, num_worker_threads=8)
+                        symmetries=False, num_worker_threads=8, optimizer=None)
 
 
 

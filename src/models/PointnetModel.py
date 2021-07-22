@@ -15,10 +15,10 @@ class ReconstructionModel(nn.Module):
         super(ReconstructionModel, self).__init__()
         if self.encoder == "pointnet":
             from src.models.pointnet_utils import PointNetEncoder
-            self.encode = PointNetEncoder(global_feat=True, feature_transform=True, channel=6)
+            self.feat = PointNetEncoder(global_feat=True, feature_transform=True, channel=6)
         elif self.encoder == "edgeconv":
             from src.models.EdgeConvModel import DgcnnEmbedding
-            self.encode = DgcnnEmbedding(args, args.num_category)
+            self.feat = DgcnnEmbedding(args, args.num_category)
         else:
             raise AssertionError("Enter the correct encoder")
         self.decode = nn.Sequential(
@@ -40,9 +40,9 @@ class ReconstructionModel(nn.Module):
     def forward(self, pc):
         """Process one our more images, corresponding to different views."""
         if self.encoder == "pointnet":
-            x, _, _ = self.encode(pc)
+            x, _, _ = self.feat(pc)
         elif self.encoder == "edgeconv":
-            x = self.encode(pc)
+            x = self.feat(pc)
         decoder = self.decode(x)
         params = self.out(decoder)
         return params
