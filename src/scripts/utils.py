@@ -1,9 +1,13 @@
 import ast
+import datetime
 import os
 from collections import defaultdict
 
 import numpy as np
 import torch
+import ttools
+from torch.utils.tensorboard import SummaryWriter
+
 from src.data.dataset_prep import ModelNetDataLoader, farthest_point_sample, pc_normalize
 from src.scripts.coons import coons_normals
 
@@ -109,8 +113,8 @@ def coons_sample(s, t, params):
 def extract_curves(params):
     """
 
-    :param params:
-    :return:
+    :param params: Patch Parameters
+    :return: a tensor
     """
     s = torch.linspace(0, 1, 50)
     sides = [params[..., :4, :], params[..., 3:7, :],
@@ -173,7 +177,8 @@ def process_patches(params, vertex_idxs, face_idxs, edge_data, junctions,
 def load_modelnet(args):
     """
     Loads ModelNet Dataset
-    :param args:
+    :param args: Arguments with expected attributes - dataset_path, batch_size, process_data, num_worker_threads,
+    use_normals, use_uniform_sample, num_point, num_category
     :return: torch Dataloader of training, validation and test dataset
     """
     train_dataset = ModelNetDataLoader(root=args.dataset_path, args=args, split='train', process_data=args.process_data)
@@ -405,6 +410,12 @@ def get_lr(optimizer):
 
 
 def get_loss_on_dataset(interface, test_dataset):
+    """
+
+    :param interface: a ttools.training.ModelInterface object.
+    :param test_dataset:
+    :return:
+    """
     with torch.no_grad():
         running_data = interface.init_validation()
         for batch_id, batch in enumerate(test_dataset):
@@ -413,11 +424,24 @@ def get_loss_on_dataset(interface, test_dataset):
 
 
 def read_pc_file(filename):
+    """
+    Returns a numpy array of points in the filename. Expects ',' as delimeter
+    :param filename: File Path
+    :return: Numpy Array
+    """
     point_set = np.loadtxt(filename, delimiter=',').astype(np.float32)
     return point_set
 
 
 def reconstruct_file(model, template_params, pc_file, curve_path):
+    """
+    Writes a .obj file with vertex (v), line (l) and face (f) information extracted from output patches of the model
+    :param model: Model to use for reconstructing Patches
+    :param template_params: a dictionary of template parameters
+    :param pc_file: The Point Cloud file to be used as input to the model
+    :param curve_path: The output .obj path
+    :return: None
+    """
     points = read_pc_file(pc_file)
     points = farthest_point_sample(points, 1024)
     points[:, 0:3] = pc_normalize(points[:, 0:3])
@@ -431,3 +455,60 @@ def reconstruct_file(model, template_params, pc_file, curve_path):
     patches = patches.squeeze(0)
 
     write_curves(patches, curve_path)
+
+
+def training_setup(args, model, interface_class, trainer_class, template_parameters, optimizer, scheduler):
+    """
+    Setups the training interface, callbacks, and
+    :param args:
+    :param model: An nn.Module type object
+    :param interface_class: a ttools.training.ModelInterface class
+    :param trainer_class:
+    :param template_parameters: a dict - expected keys - vertex_idxs, face_idxs,
+     junctions, edge_data, vertex_t, adjacencies, junction_order, template_normals, symmetries
+    :param optimizer: torch.optim.Optimizer type
+    :param scheduler: torch.optim.lr_scheduler._LRScheduler type
+    :return:
+    """
+
+    args.optimizer = optimizer
+    args.scheduler = scheduler
+
+    interface = interface_class(model, args, template_parameters["vertex_idxs"],
+                                template_parameters["face_idxs"],
+                                template_parameters["junctions"],
+                                template_parameters["edge_data"],
+                                template_parameters["vertex_t"],
+                                template_parameters["adjacencies"],
+                                template_parameters["junction_order"],
+                                template_parameters["template_normals"],
+                                template_parameters["symmetries"])
+
+    starting_epoch = 0
+    check_pointer = ttools.Checkpointer(
+        args.checkpoint_dir, model=model, optimizers=interface.optimizer)
+
+    keys = ['loss', 'chamfer_loss', 'normals_loss', 'collision_loss',
+            'planar_loss', 'template_normals_loss', 'learning_rate']
+
+    writer = SummaryWriter(
+        os.path.join(args.checkpoint_dir, 'summaries',
+                     datetime.datetime.now().strftime(
+                         'training_log_%d-%B-%y_%H-%M-%S')), flush_secs=1)
+    val_writer = SummaryWriter(
+        os.path.join(args.checkpoint_dir, 'summaries',
+                     datetime.datetime.now().strftime(
+                         'validation_log_%d-%B-%y_%H-%M-%S')),
+        flush_secs=1)
+
+    trainer = trainer_class(interface)
+    trainer.add_callback(
+        ttools.callbacks.TensorBoardLoggingCallback(keys=keys, writer=writer,
+
+                                                    val_writer=val_writer,
+                                                    frequency=3))
+    trainer.add_callback(ttools.callbacks.ProgressBarCallback(keys=keys))
+    trainer.add_callback(ttools.callbacks.CheckpointingCallback(
+        check_pointer, max_files=1, max_epochs=2))
+
+    return trainer
