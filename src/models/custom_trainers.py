@@ -216,3 +216,23 @@ class BatchScheduleTrainer(SchedulerTrainer):
     def batch_end(self, batch, train_step_data):
         super(BatchScheduleTrainer, self).batch_end(batch, train_step_data)
         self.interface.scheduler.step()
+
+
+class ReduceOnPlateauTrainer(CustomTrainer):
+
+    def validation_end(self, running_val_data):
+        super().validation_end(running_val_data)
+        self.interface.epoch_num += 1
+        self.interface.scheduler.step(running_val_data['loss'])
+        print(f"Validation loss: {running_val_data['loss']}")
+        if running_val_data['loss'] < self.interface.best_val_loss:
+            path = os.path.join(self.interface.args.checkpoint_dir,
+                                f'best_model.pth')
+            torch.save({
+                'model_state_dict': self.interface.model.state_dict(),
+                'optimizer_state_dict': self.interface.optimizer.state_dict(),
+                'loss': running_val_data['loss'],
+                'scheduler': self.interface.scheduler.state_dict()
+            }, path)
+            self.interface.best_val_loss = running_val_data['loss']
+            print(f"Best Val Loss {self.interface.best_val_loss}. Saving Model.")

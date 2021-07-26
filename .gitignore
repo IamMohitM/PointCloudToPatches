@@ -1,10 +1,13 @@
 *.egg-info
 *.idea
-/src/models/checkpoints/
+src/models/checkpoints/
 *.dat
 */ignore_dir/
 /ignore_dir/
 */__pycache__/
+src/models/__pycache__/
+src/scripts/__pycache__/
+src/data/__pycache__/
 *.DS_Store
 src/scripts/testing.py
 ModelCheckpoints/
