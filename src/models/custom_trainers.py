@@ -1,11 +1,12 @@
 import os
+import signal
 
 import torch
 import ttools
-import signal
 from ttools.utils import get_logger
 
 LOG = get_logger(__name__)
+
 
 class CustomTrainer(object):
     """Implements a simple training loop with hooks for callbacks. Same as ttools.training.Trainer
@@ -192,6 +193,7 @@ class GeneralTrainer(CustomTrainer):
     """
 
     """
+
     def validation_end(self, running_val_data):
         super().validation_end(running_val_data)
         self.interface.epoch_num += 1
@@ -208,3 +210,9 @@ class GeneralTrainer(CustomTrainer):
             }, path)
             self.interface.best_val_loss = running_val_data['loss']
             print(f"Best Val Loss {self.interface.best_val_loss}. Saving Model.")
+
+
+class BatchScheduleTrainer(SchedulerTrainer):
+    def batch_end(self, batch, train_step_data):
+        super(BatchScheduleTrainer, self).batch_end(batch, train_step_data)
+        self.interface.scheduler.step()
