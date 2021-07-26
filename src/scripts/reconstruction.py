@@ -55,9 +55,11 @@ if __name__ == "__main__":
                         help='Dimension of embeddings')
     parser.add_argument('--k', type=int, default=20, metavar='N',
                         help='Num of nearest neighbors to use')
-    parser.set_defaults(optimizer=None, scheduler=None)
+    parser.set_defaults(optimizer=None, scheduler=None, file_type='pts')
 
     args = parser.parse_args()
+
+
 
     template_parameters = utils.load_template_parameters(args)
     template_used = os.path.basename(args.template_dir)
@@ -68,9 +70,9 @@ if __name__ == "__main__":
                                 init=template_parameters['initial_parameters'])
     model_dict = model.state_dict()
     model_dir = os.path.join("../../ModelCheckpoints",
-                             'pretrained_modelnet40_1024_lr0.0001_batch16__sphere24_nocollision_cycliclrsheduler')
+                             'pretrained_modelnet40_2048_lr0.009_batch32_decay0.9_patience8_sphere24_ReduceOnPlateauScheduler_onlychamferplanar')
     checkpoint_path = os.path.join(model_dir, "best_model.pth")
-    output_path = os.path.join(model_dir, 'reconstructed_patches')
+    output_path = os.path.join(model_dir, f'reconstructed_patches_{args.file_type}')
     os.makedirs(output_path, exist_ok=True)
 
     model = utils.load_pretrained(model, checkpoint_path)
@@ -93,11 +95,11 @@ if __name__ == "__main__":
         files = f.read().strip().split('\n')
     #
     # filenames= [os.path.join(args.dataset_path, file.split('_')[0], file) for file in files]
-    test_files = np.random.choice(files, size=150)
+    test_files = np.random.choice(files, size=50)
     with torch.no_grad():
         for file in test_files:
             print(os.path.basename(file))
             pc_file = os.path.join(os.path.join(args.dataset_path,
                                                 file.rsplit('_', maxsplit=1)[0], f'{file}.txt'))
-            output_file = os.path.join(output_path, f'{os.path.basename(pc_file)}.obj')
-            utils.reconstruct_file(model, template_parameters, pc_file, output_file)
+            output_file = os.path.join(output_path, f'{os.path.basename(pc_file)}.{args.file_type}')
+            utils.reconstruct_file(model, args.num_point, template_parameters, pc_file, output_file, args.file_type)

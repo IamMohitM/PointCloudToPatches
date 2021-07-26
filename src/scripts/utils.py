@@ -110,13 +110,12 @@ def coons_sample(s, t, params):
     return Lc + Ld - B  # final patch
 
 
-def extract_curves(params):
+def extract_curves(params, n_points=50):
     """
-
     :param params: Patch Parameters
     :return: a tensor
     """
-    s = torch.linspace(0, 1, 50)
+    s = torch.linspace(0, 1, n_points)
     sides = [params[..., :4, :], params[..., 3:7, :],
              params[..., 6:10, :], params[..., [9, 10, 11, 0], :]]
 
@@ -318,6 +317,16 @@ def shift_point_cloud(batch_data, shift_range=0.1):
     return batch_data
 
 
+def write_points(patches, file):
+    patch_vertices = extract_curves(patches, n_points=1000).cpu().numpy()
+    vertex_index = 1
+    with open(file, 'w') as f:
+        for patch in patch_vertices:
+            for curves in patch:
+                for x, y, z in curves:
+                    f.write(f'{x} {y} {z}\n')
+
+
 def write_curves(patches, file):
     patch_vertices = extract_curves(patches).cpu().numpy()
     line_list = []
@@ -433,7 +442,7 @@ def read_pc_file(filename):
     return point_set
 
 
-def reconstruct_file(model, template_params, pc_file, curve_path):
+def reconstruct_file(model, n_samples, template_params, pc_file, curve_path, type='pts'):
     """
     Writes a .obj file with vertex (v), line (l) and face (f) information extracted from output patches of the model
     :param model: Model to use for reconstructing Patches
@@ -443,7 +452,7 @@ def reconstruct_file(model, template_params, pc_file, curve_path):
     :return: None
     """
     points = read_pc_file(pc_file)
-    points = farthest_point_sample(points, 1024)
+    points = farthest_point_sample(points, n_samples)
     points[:, 0:3] = pc_normalize(points[:, 0:3])
     points = torch.from_numpy(points)
     points = points.transpose(1, 0)
@@ -453,8 +462,10 @@ def reconstruct_file(model, template_params, pc_file, curve_path):
         params, template_params['vertex_idxs'], template_params['face_idxs'], template_params['edge_data'],
         template_params['junctions'], template_params['junction_order'], template_params['vertex_t'])
     patches = patches.squeeze(0)
-
-    write_curves(patches, curve_path)
+    if type == 'pts':
+        write_points(patches, curve_path)
+    else:
+        write_curves(patches, curve_path)
 
 
 def training_setup(args, model, interface_class, trainer_class, template_parameters, optimizer, scheduler):
@@ -512,3 +523,30 @@ def training_setup(args, model, interface_class, trainer_class, template_paramet
         check_pointer, max_files=1, max_epochs=2))
 
     return trainer
+
+
+def shape_reconstruct_file(model, template_params, points, curve_path, type='pts'):
+    """
+    Writes a .obj file with vertex (v), line (l) and face (f) information extracted from output patches of the model
+    :param model: Model to use for reconstructing Patches
+    :param template_params: a dictionary of template parameters
+    :param pc_file: The Point Cloud file to be used as input to the model
+    :param curve_path: The output .obj path
+    :return: None
+    """
+    points = farthest_point_sample(points, 1024)
+    points[:, 0:3] = pc_normalize(points[:, 0:3])
+    points = torch.from_numpy(points)
+    points = points.transpose(1, 0)
+
+    params = model(points[None])
+
+    _, patches = process_patches(
+        params, template_params['vertex_idxs'], template_params['face_idxs'], template_params['edge_data'],
+        template_params['junctions'], template_params['junction_order'], template_params['vertex_t'])
+    patches = patches.squeeze(0)
+    if type=='pts':
+        write_points(patches, curve_path)
+    else:
+        write_curves(patches, curve_path)
+
