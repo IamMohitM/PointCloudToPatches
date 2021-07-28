@@ -318,7 +318,7 @@ def shift_point_cloud(batch_data, shift_range=0.1):
 
 
 def write_points(patches, file):
-    patch_vertices = extract_curves(patches, n_points=1000).cpu().numpy()
+    patch_vertices = extract_curves(patches, n_points=500).cpu().numpy()
     vertex_index = 1
     with open(file, 'w') as f:
         for patch in patch_vertices:
@@ -432,17 +432,17 @@ def get_loss_on_dataset(interface, test_dataset):
         return running_data
 
 
-def read_pc_file(filename):
+def read_pc_file(filename, delimiter=","):
     """
     Returns a numpy array of points in the filename. Expects ',' as delimeter
     :param filename: File Path
     :return: Numpy Array
     """
-    point_set = np.loadtxt(filename, delimiter=',').astype(np.float32)
+    point_set = np.loadtxt(filename, delimiter=delimiter).astype(np.float32)
     return point_set
 
 
-def reconstruct_file(model, n_samples, template_params, pc_file, curve_path, type='pts'):
+def reconstruct_file(model, n_samples, template_params, pc_file, curve_path, type='pts', delimiter=','):
     """
     Writes a .obj file with vertex (v), line (l) and face (f) information extracted from output patches of the model
     :param model: Model to use for reconstructing Patches
@@ -451,7 +451,7 @@ def reconstruct_file(model, n_samples, template_params, pc_file, curve_path, typ
     :param curve_path: The output .obj path
     :return: None
     """
-    points = read_pc_file(pc_file)
+    points = read_pc_file(pc_file, delimiter)
     points = farthest_point_sample(points, n_samples)
     points[:, 0:3] = pc_normalize(points[:, 0:3])
     points = torch.from_numpy(points)
@@ -468,7 +468,8 @@ def reconstruct_file(model, n_samples, template_params, pc_file, curve_path, typ
         write_curves(patches, curve_path)
 
 
-def training_setup(args, model, interface_class, trainer_class, template_parameters, optimizer, scheduler):
+def training_setup(args, model, interface_class, trainer_class, template_parameters, optimizer, scheduler,
+                   log_directory_name=None):
     """
     Setups the training interface, callbacks, and
     :param args:
@@ -502,14 +503,20 @@ def training_setup(args, model, interface_class, trainer_class, template_paramet
     keys = ['loss', 'chamfer_loss', 'normals_loss', 'collision_loss',
             'planar_loss', 'template_normals_loss', 'learning_rate']
 
+    if log_directory_name:
+        train_log = f'training_log_{log_directory_name}'
+        val_log = f'Validation_log_{log_directory_name}'
+    else:
+        train_log = datetime.datetime.now().strftime(
+            'training_log_%d-%B-%y_%H-%M-%S')
+        val_log = datetime.datetime.now().strftime(
+            'validation_log_%d-%B-%y_%H-%M-%S')
     writer = SummaryWriter(
         os.path.join(args.checkpoint_dir, 'summaries',
-                     datetime.datetime.now().strftime(
-                         'training_log_%d-%B-%y_%H-%M-%S')), flush_secs=1)
+                     train_log), flush_secs=1)
     val_writer = SummaryWriter(
         os.path.join(args.checkpoint_dir, 'summaries',
-                     datetime.datetime.now().strftime(
-                         'validation_log_%d-%B-%y_%H-%M-%S')),
+                     val_log),
         flush_secs=1)
 
     trainer = trainer_class(interface)
@@ -545,8 +552,7 @@ def shape_reconstruct_file(model, template_params, points, curve_path, type='pts
         params, template_params['vertex_idxs'], template_params['face_idxs'], template_params['edge_data'],
         template_params['junctions'], template_params['junction_order'], template_params['vertex_t'])
     patches = patches.squeeze(0)
-    if type=='pts':
+    if type == 'pts':
         write_points(patches, curve_path)
     else:
         write_curves(patches, curve_path)
-

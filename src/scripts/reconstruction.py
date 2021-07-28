@@ -1,13 +1,14 @@
 import argparse
 import os
 import pickle
+from shutil import copyfile
 
 import numpy as np
-import src.scripts.utils as utils
 import torch
+
+import src.scripts.utils as utils
 from src.models.PointnetModel import ReconstructionModel
 from src.models.interfaces import ReconstructionInterface
-from torch.optim.lr_scheduler import CyclicLR
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser('training')
@@ -55,11 +56,12 @@ if __name__ == "__main__":
                         help='Dimension of embeddings')
     parser.add_argument('--k', type=int, default=20, metavar='N',
                         help='Num of nearest neighbors to use')
-    parser.set_defaults(optimizer=None, scheduler=None, file_type='pts')
+    parser.add_argument('--model_name', type=str,
+                        help="Directory of where best_model.pth file is stored for the model inside ModelCheckpoints directory")
+    parser.set_defaults(optimizer=None, scheduler=None, file_type='pts',
+                        model_name='pretrained_modelnet40_2048_lr0.01_batch32_decay0.95_patience10_sphere54_ReduceOnPlateauScheduler_chamfer_planar_normal')
 
     args = parser.parse_args()
-
-
 
     template_parameters = utils.load_template_parameters(args)
     template_used = os.path.basename(args.template_dir)
@@ -69,10 +71,13 @@ if __name__ == "__main__":
     model = ReconstructionModel(args, len(template_parameters['initial_parameters']),
                                 init=template_parameters['initial_parameters'])
     model_dict = model.state_dict()
-    model_dir = os.path.join("../../ModelCheckpoints",
-                             'pretrained_modelnet40_2048_lr0.009_batch32_decay0.9_patience8_sphere24_ReduceOnPlateauScheduler_onlychamferplanar')
+
+    model_name = args.model_name
+    model_dir = os.path.join("../../ModelCheckpoints", model_name)
+    visualisation_dir = os.path.join("../../ignore_dir/visualizations/")
+
     checkpoint_path = os.path.join(model_dir, "best_model.pth")
-    output_path = os.path.join(model_dir, f'reconstructed_patches_{args.file_type}')
+    output_path = os.path.join(visualisation_dir, model_name)
     os.makedirs(output_path, exist_ok=True)
 
     model = utils.load_pretrained(model, checkpoint_path)
@@ -95,11 +100,15 @@ if __name__ == "__main__":
         files = f.read().strip().split('\n')
     #
     # filenames= [os.path.join(args.dataset_path, file.split('_')[0], file) for file in files]
-    test_files = np.random.choice(files, size=50)
+    test_files = np.random.choice(files, size=15)
     with torch.no_grad():
         for file in test_files:
             print(os.path.basename(file))
             pc_file = os.path.join(os.path.join(args.dataset_path,
-                                                file.rsplit('_', maxsplit=1)[0], f'{file}.txt'))
-            output_file = os.path.join(output_path, f'{os.path.basename(pc_file)}.{args.file_type}')
-            utils.reconstruct_file(model, args.num_point, template_parameters, pc_file, output_file, args.file_type)
+                                                file.rsplit('_', maxsplit=1)[0], f'{file}.pts'))
+            output_folder = os.path.join(output_path, file)
+            os.makedirs(output_folder, exist_ok=True)
+            output_file = os.path.join(output_folder, f'reconstruction.pts')
+            utils.reconstruct_file(model, args.num_point, template_parameters, pc_file, output_file, args.file_type,
+                                   delimiter=' ')
+            copyfile(pc_file, os.path.join(output_folder, 'source.pts'))

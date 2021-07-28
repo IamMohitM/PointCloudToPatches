@@ -1,8 +1,10 @@
 import os
 import signal
 
+import numpy as np
 import torch
 import ttools
+from torch.optim.optimizer import Optimizer
 from ttools.utils import get_logger
 
 LOG = get_logger(__name__)
