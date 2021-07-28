@@ -139,8 +139,8 @@ class CyclicLR(object):
 
     def get_lr(self):
         step_size = float(self.step_size)
-        cycle = torch.floor(1 + self.last_batch_iteration / (2 * step_size))
-        x = torch.abs(self.last_batch_iteration / step_size - 2 * cycle + 1)
+        cycle = torch.floor(torch.Tensor(1 + self.last_batch_iteration / (2 * step_size)))
+        x = torch.abs(torch.Tensor(self.last_batch_iteration / step_size - 2 * cycle + 1))
 
         lrs = []
         param_lrs = zip(self.optimizer.param_groups, self.base_lrs, self.max_lrs)
