@@ -69,10 +69,11 @@ class CustomTrainer(object):
         if starting_epoch is None:
             starting_epoch = 0
 
+
         LOG.info("Starting taining from epoch %d", starting_epoch)
 
         epoch = starting_epoch
-
+        self.epoch_num = starting_epoch
         while num_epochs is None or epoch < starting_epoch + num_epochs:
             self.epoch_start(epoch)
             for batch_idx, batch in enumerate(dataloader):
@@ -100,6 +101,7 @@ class CustomTrainer(object):
                     self.validation_end(running_val_data)
 
             epoch += 1
+            self.epoch_num += 1
 
             if not self._keep_running:
                 self._stop()
@@ -184,7 +186,7 @@ class SchedulerTrainer(CustomTrainer):
                 'model_state_dict': self.interface.model.state_dict(),
                 'optimizer_state_dict': self.interface.optimizer.state_dict(),
                 'loss': running_val_data['loss'],
-                'epoch': self.interface.epoch_num,
+                'epoch': self.epoch_num,
                 'scheduler': self.interface.scheduler.state_dict()
             }, path)
             self.interface.best_val_loss = running_val_data['loss']
@@ -208,13 +210,13 @@ class GeneralTrainer(CustomTrainer):
                 'model_state_dict': self.interface.model.state_dict(),
                 'optimizer_state_dict': self.interface.optimizer.state_dict(),
                 'loss': running_val_data['loss'],
-                'epoch': self.interface.epoch_num
+                'epoch': self.epoch_num
             }, path)
             self.interface.best_val_loss = running_val_data['loss']
             print(f"Best Val Loss {self.interface.best_val_loss}. Saving Model.")
 
 
-class BatchScheduleTrainer(SchedulerTrainer):
+class BatchScheduleTrainer(GeneralTrainer):
     def batch_end(self, batch, train_step_data):
         super(BatchScheduleTrainer, self).batch_end(batch, train_step_data)
         self.interface.scheduler.step()
@@ -234,6 +236,7 @@ class ReduceOnPlateauTrainer(CustomTrainer):
                 'model_state_dict': self.interface.model.state_dict(),
                 'optimizer_state_dict': self.interface.optimizer.state_dict(),
                 'loss': running_val_data['loss'],
+                'epoch': self.epoch_num,
                 'scheduler': self.interface.scheduler.state_dict()
             }, path)
             self.interface.best_val_loss = running_val_data['loss']
