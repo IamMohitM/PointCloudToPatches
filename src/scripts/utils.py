@@ -11,6 +11,11 @@ from torch.utils.tensorboard import SummaryWriter
 from src.data.dataset_prep import ModelNetDataLoader, farthest_point_sample, pc_normalize
 from src.scripts.coons import coons_normals
 
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+else:
+    device = torch.device('cpu')
+
 
 def dot(a, b):
     """Dot product."""
@@ -82,9 +87,9 @@ def bezier_sample(t, params):
     A = params.new_tensor([[1, 0, 0, 0],
                            [-3, 3, 0, 0],
                            [3, -6, 3, 0],
-                           [-1, 3, -3, 1]])
+                           [-1, 3, -3, 1]]).to(device)
 
-    t = t.pow(t.new_tensor([0, 1, 2, 3]))  # [n_samples, 4]
+    t = t.pow(t.new_tensor([0, 1, 2, 3])).to(device)  # [n_samples, 4]
 
     # @ operator is equivalent to matmul
     points = t @ A @ params  # [..., n_samples, 3]
@@ -115,7 +120,7 @@ def extract_curves(params, n_points=50):
     :param params: Patch Parameters
     :return: a tensor
     """
-    s = torch.linspace(0, 1, n_points)
+    s = torch.linspace(0, 1, n_points).to(device)
     sides = [params[..., :4, :], params[..., 3:7, :],
              params[..., 6:10, :], params[..., [9, 10, 11, 0], :]]
 
@@ -318,7 +323,7 @@ def shift_point_cloud(batch_data, shift_range=0.1):
 
 
 def write_points(patches, file):
-    patch_vertices = extract_curves(patches, n_points=500).cpu().numpy()
+    patch_vertices = extract_curves(patches, n_points=200).cpu().numpy()
     vertex_index = 1
     with open(file, 'w') as f:
         for patch in patch_vertices:
@@ -368,13 +373,10 @@ def knn(x, k):
 def get_graph_feature(x, k=20, idx=None):
     batch_size = x.size(0)
     num_points = x.size(2)
-    x = x.view(batch_size, -1, num_points)
+
+    x = x.view(batch_size, -1, num_points).to(device)
     if idx is None:
         idx = knn(x, k=k)  # (batch_size, num_points, k)
-    if torch.cuda.is_available():
-        device = torch.device('cuda')
-    else:
-        device = torch.device('cpu')
 
     idx_base = torch.arange(0, batch_size, device=device).view(-1, 1, 1) * num_points
 
@@ -396,11 +398,6 @@ def get_graph_feature(x, k=20, idx=None):
 
 
 def load_pretrained(model, checkpoint_path):
-    if torch.cuda.is_available():
-        device = None
-    else:
-        device = 'cpu'
-
     checkpoint_dict = torch.load(checkpoint_path, map_location=device)
     count = 0
     model_dict = model.state_dict()
@@ -551,7 +548,7 @@ def shape_reconstruct_file(model, template_params, points, curve_path, type='pts
     _, patches = process_patches(
         params, template_params['vertex_idxs'], template_params['face_idxs'], template_params['edge_data'],
         template_params['junctions'], template_params['junction_order'], template_params['vertex_t'])
-    patches = patches.squeeze(0)
+    patches = patches.squeeze(0).to(device)
     if type == 'pts':
         write_points(patches, curve_path)
     else:
