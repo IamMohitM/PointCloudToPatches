@@ -18,7 +18,7 @@ class ReconstructionModel(nn.Module):
             self.feat = PointNetEncoder(global_feat=True, feature_transform=True, channel=6)
         elif self.encoder == "edgeconv":
             from src.models.EdgeConvModel import DgcnnEmbedding
-            self.feat = DgcnnEmbedding(args, args.num_category)
+            self.feat = DgcnnEmbedding(args)
         else:
             raise AssertionError("Enter the correct encoder")
         self.decode = nn.Sequential(
