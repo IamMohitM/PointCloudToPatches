@@ -197,17 +197,17 @@ def load_modelnet(args):
     return train_data_loader, val_data_loader, test_data_loader
 
 
-def load_template_parameters(args):
+def load_template_parameters(template_dir):
     line_data = [line.strip().split(' ') for line in open(
-        os.path.join(args.template_dir, 'edges.txt'), 'r')]
+        os.path.join(template_dir, 'edges.txt'), 'r')]
     line_data = [(int(a), int(b), int(c), int(d)) for a, b, c, d in line_data]
     junction_order = [int(line.strip()) for line in open(
-        os.path.join(args.template_dir, 'junction_order.txt'), 'r')]
+        os.path.join(template_dir, 'junction_order.txt'), 'r')]
     topology = ast.literal_eval(
-        open(os.path.join(args.template_dir, 'topology.txt'), 'r').read())
+        open(os.path.join(template_dir, 'topology.txt'), 'r').read())
     adjacencies = {}
     for i, l in enumerate(
-            open(os.path.join(args.template_dir, 'adjacencies.txt'), 'r')):
+            open(os.path.join(template_dir, 'adjacencies.txt'), 'r')):
         adj = {}
         for x in l.strip().split(','):
             if x != '':
@@ -220,11 +220,11 @@ def load_template_parameters(args):
     junctions = {}
     vertex_idxs = np.zeros(
         [len(open(os.path.join(
-            args.template_dir, 'vertices.txt'), 'r').readlines()), 3],
+            template_dir, 'vertices.txt'), 'r').readlines()), 3],
         dtype=np.int64)
     processed_vertices = []
     for i, l in enumerate(
-            open(os.path.join(args.template_dir, 'vertices.txt'), 'r')):
+            open(os.path.join(template_dir, 'vertices.txt'), 'r')):
         value = l.strip().split(' ')
         if value[0] == 'Junction':
             _, v0, v1, v2, v3, t_init = value  # what's the t_init value

@@ -15,9 +15,12 @@ class ReconstructionInterface(ModelInterface):
                  template_normals, symmetries=None):
         self.model = model
         self.epoch_num = 0
-        if args.cuda:
+        device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
             # self.model = torch.nn.DataParallel(self.model)
-            self.model.cuda()
+        self.model.to(device)
+
+        # if args.cuda:
+        #     self.model.cuda()
 
         self.vertex_idxs = vertex_idxs
         self.face_idxs = face_idxs
