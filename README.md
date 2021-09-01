@@ -59,7 +59,9 @@ python src/scripts/reconstruct.py --pc_file "input.pts"
 --template_dir dataset/templates/sphere24
 ```
 
-reconstructs sketches from the input point cloud file
+reconstructs sketches from the input point cloud file. 
+
+Change Encoder (`--encoder`) to "edgeconv" if using EdgeConv based models.
 
 # References 
 <a id="1">[1]</a> Ling et al, “Towards 3D VR-Sketch to 3D Shape Retrieval”, in International Conference on 3D Vision, 2020.
