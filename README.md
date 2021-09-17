@@ -11,9 +11,9 @@ In this thesis, we present the first learning-based method to generate human-lik
 
 
 # Pretrained Models
- - [PN-Sphere24](https://drive.google.com/file/d/1-YqPuSv3pJ6qsy5yDXT6mt1ll7lSibGE/view?usp=sharing)
- - [PN-Sphere54](https://drive.google.com/file/d/1-Yo1Kz4mpTtYQSZIVHE291rotMaTE6dS/view?usp=sharing)
- - [EC-Sphere54](https://drive.google.com/file/d/10ApGhG6TVphNXJ2bK7Dd17vf0O_vFXy9/view?usp=sharing)
+ - [PN-Sphere24](https://drive.google.com/drive/folders/14gZYY5EsYhK2UKVU7YDCBAAgwa9ob6Ki?usp=sharing)
+ - [PN-Sphere54](https://drive.google.com/drive/folders/13szjiL75-U3CtQNwhDi5EFakv7Im_CuW?usp=sharing)
+ - [EC-Sphere54](https://drive.google.com/drive/folders/1Co9UMz9P7F45ZYCQrh3UtQxjJPVmMbMh?usp=sharing)
  
 
 # Setup
