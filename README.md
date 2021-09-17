@@ -15,11 +15,6 @@ In this thesis, we present the first learning-based method to generate human-lik
  - [PN-Sphere54](https://drive.google.com/file/d/1-Yo1Kz4mpTtYQSZIVHE291rotMaTE6dS/view?usp=sharing)
  - [EC-Sphere54](https://drive.google.com/file/d/10ApGhG6TVphNXJ2bK7Dd17vf0O_vFXy9/view?usp=sharing)
  
-# Generated Sketch Datasets (ModelNet10)
- - [PN-Sphere24](https://drive.google.com/drive/folders/1SdzROHFaBJwX9ntgkYcoMXV1fmbHDkf7?usp=sharing)
- - [PN-Sphere54](https://drive.google.com/drive/folders/18jMVmP2PZfSXFjb0buBsGjb7Ld0J9e8a?usp=sharing)
- - [EC-Sphere54](https://drive.google.com/drive/folders/1-nULSUpJMvEr8uFERhh03i1HXb7wpF6K?usp=sharing)
-
 
 # Setup
 Run the following commands in your terminal
