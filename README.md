@@ -5,7 +5,7 @@ With Machine Learning, we have achieved promising results for 3D Model retrieval
 
 In this thesis, we present the first learning-based method to generate human-like 3D sketches. We use 3D point clouds as the input modality to generate a set of control points of Coons Patches, where each patch is set of four Bezier Curves. These Bezier curves therefore become the skeleton of human- like sketches. Our contributions are three-fold: i) We analyse and review FlowRep necessary to understand expected arbitrary 3D sketch generation, ii) We suggest the first learning-based method inspired by a 3D representation presented by Smirnov et al to generate 3D Sketches [[2]](#2), iii) We provide possible directions for future work on this problem. While our sketches perform below par in terms of top-k accuracy for 3D model retrieval compared to FlowRep (SOTA) synthetic sketches, our method has a 100% success rate in processing input 3D models unlike FlowRep and achieves Mean Average Precision on par with FlowRep-based sketches for 3D Model Retrieval.
 
-[Thesis](https://drive.google.com/file/d/1Zy4S1CJb2MOlifdj8MqMAf3OwSfQWaiv/view?usp=sharing)
+[Thesis](https://drive.google.com/file/d/17wsMnsF9ZhiHrLHXMLdkx1LfXjm-9hhn/view?usp=sharing)
 
 ![Example](demo/demo.gif)
 
